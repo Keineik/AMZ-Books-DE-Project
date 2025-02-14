@@ -1,0 +1,34 @@
+networks:
+  amz-books-de-project-network:
+    driver: bridge
+    name: amz-books-de-project-network
+
+volumes:
+  mssql_data:
+  minio_data:
+
+services:
+  # MSSQL Server as OLTP database to extract from
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: mssql
+    env_file:
+      - .env
+    ports:
+      - "1443:1443"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  # MinIO as datalake
+  minio:
+    image: bitnami/minio:latest
+    container_name: minio
+    env_file:
+      - .env
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - amz-books-de-project-network
