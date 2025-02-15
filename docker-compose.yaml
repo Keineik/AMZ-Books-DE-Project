@@ -6,6 +6,7 @@ networks:
 volumes:
   mssql_data:
   minio_data:
+  airflow-metadata-db:
 
 services:
   # MSSQL Server as OLTP database to extract from
@@ -18,6 +19,8 @@ services:
       - "1443:1443"
     volumes:
       - mssql_data:/var/opt/mssql
+    networks:
+      - amz-books-de-project-network
 
   # MinIO as datalake
   minio:
@@ -29,6 +32,70 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - minio_data:/bitnami/minio/data
+    networks:
+      - amz-books-de-project-network
+
+  # Spark as compute engine    
+  spark:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    env_file:
+      - .env
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "8080:8080"
+    networks:
+      - amz-books-de-project-network
+
+  spark-worker:
+    image: bitnami/spark:latest
+    env_file:
+      - .env
+    environment:
+      - SPARK_USER=spark
+    networks:
+      - amz-books-de-project-network
+
+  # Airflow as orchestrator
+  # Postresql as airflow database
+  airflow-metadata-db:
+    image: 'bitnami/postgresql:latest'
+    env_file:
+      - .env
+    volumes:
+      - airflow-metadata-db:/bitnami/postgresql
+    networks:
+      - amz-books-de-project-network
+
+  airflow-worker:
+    image: bitnami/airflow:latest
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW_COMPONENT_TYPE=worker
+    networks:
+      - amz-books-de-project-network
+
+  airflow-scheduler:
+    image: bitnami/airflow:latest
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW_COMPONENT_TYPE=scheduler
+    volumes:
+      - ./dags:/opt/bitnami/airflow/dags
+    networks:
+      - amz-books-de-project-network
+
+  airflow:
+    image: bitnami/airflow:latest
+    env_file:
+      - .env
+    ports:
+      - '8081:8080'
+    environment:
+      - AIRFLOW_COMPONENT_TYPE=webserver
     networks:
       - amz-books-de-project-network
